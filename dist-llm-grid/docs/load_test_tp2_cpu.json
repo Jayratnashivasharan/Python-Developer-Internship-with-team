@@ -1,0 +1,65 @@
+{
+  "concurrency": 24,
+  "requests": 72,
+  "succeeded": 72,
+  "failed": 0,
+  "wall_s": 3.53,
+  "throughput_tok_s": 605.5,
+  "req_per_s": 20.37,
+  "ttft_ms": {
+    "p50": 292.2,
+    "p95": 762.6,
+    "p99": 915.8
+  },
+  "latency_ms": {
+    "p50": 977.3,
+    "p95": 1516.2,
+    "p99": 1634.8
+  },
+  "errors": [],
+  "server_metrics": {
+    "uptime_s": 12.1,
+    "requests": {
+      "total": 74,
+      "finished": 74,
+      "failed": 0,
+      "running": 0,
+      "waiting": 0
+    },
+    "tokens_generated": 2196,
+    "tokens_per_s": 181.26,
+    "steps": 210,
+    "kv_cache_usage": 0.0,
+    "ttft_ms": {
+      "avg": 336.203,
+      "p50": 257.126,
+      "p95": 752.291,
+      "p99": 891.887
+    },
+    "step_ms": {
+      "avg": 19.073,
+      "p50": 18.369,
+      "p95": 33.32,
+      "p99": 46.524
+    },
+    "worker_compute_ms": {
+      "avg": 16.999,
+      "p50": 16.571,
+      "p95": 31.636,
+      "p99": 44.743
+    },
+    "worker_allreduce_ms": {
+      "avg": 10.028,
+      "p50": 9.315,
+      "p95": 18.802,
+      "p99": 22.461
+    },
+    "inter_node_overhead_ms": {
+      "avg": 2.074,
+      "p50": 1.962,
+      "p95": 3.76,
+      "p99": 4.368
+    },
+    "avg_batch_size": 10.51
+  }
+}

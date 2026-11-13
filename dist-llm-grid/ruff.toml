@@ -1,0 +1,5 @@
+extend-exclude = ["grid/proto/inference_pb2.py", "grid/proto/inference_pb2_grpc.py"]
+line-length = 130
+[lint]
+select = ["E", "F", "I"]
+ignore = ["E741", "E702", "E701"]

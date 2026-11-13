@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distributed LLM Grid</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --panel2:#f0f2f5; --text:#1b2330; --muted:#667085; --line:#e2e6ec;
+  --accent:#4f46e5; --accent2:#6d66f0; --accent-text:#fff; --good:#12935b; --warn:#c77a00; --bad:#d12f3a;
+  --user:#eef0ff; --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.05);
+}
+:root[data-theme="dark"]{
+  --bg:#0f1319; --panel:#171c24; --panel2:#1e2530; --text:#e8ecf3; --muted:#93a0b4; --line:#2a3342;
+  --accent:#7c75ff; --accent2:#9a95ff; --accent-text:#0f1319; --good:#35c98a; --warn:#f0b04a; --bad:#ff6b76;
+  --user:#242a45; --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:flex;flex-direction:column;min-height:100vh}
+button,input,textarea,select{font:inherit;color:inherit}
+header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar{max-width:1200px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:.2px}
+.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#22b8cf);display:grid;place-items:center;color:#fff;font-size:15px}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:13px;color:var(--muted);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.dot.ok{background:var(--good)} .dot.err{background:var(--bad)}
+.icon-btn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer}
+nav{max-width:1200px;margin:0 auto;padding:0 12px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;cursor:pointer;color:var(--muted);font-weight:550;white-space:nowrap}
+nav button.active{color:var(--accent);border-color:var(--accent)}
+main{flex:1;width:100%;max-width:1200px;margin:0 auto;padding:16px}
+section{display:none} section.active{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+.card h3{margin:0 0 12px;font-size:14px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kpi .v{font-size:26px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .s{font-size:12px;color:var(--muted)}
+.cols2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.banner{background:rgba(199,122,0,.12);border:1px solid rgba(199,122,0,.35);color:var(--text);border-radius:10px;padding:10px 12px;font-size:13.5px;margin-bottom:14px}
+.banner.err{background:rgba(209,47,58,.1);border-color:rgba(209,47,58,.35)}
+/* chat */
+.chat{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+@media(max-width:860px){.chat{grid-template-columns:1fr}}
+.thread{display:flex;flex-direction:column;height:calc(100vh - 230px);min-height:420px}
+.msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:4px 2px 12px}
+.empty{margin:auto;text-align:center;color:var(--muted);max-width:420px}
+.empty h2{color:var(--text);margin:0 0 6px;font-size:20px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px}
+.chip:hover{border-color:var(--accent)}
+.msg{max-width:88%;padding:10px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--user);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--panel2);border-bottom-left-radius:4px;border:1px solid var(--line)}
+.msg.bot.err{border-color:var(--bad);color:var(--bad)}
+.meta{font-size:12px;color:var(--muted);margin-top:6px;white-space:normal;font-variant-numeric:tabular-nums}
+.cursor::after{content:"▍";animation:blink 1s steps(2) infinite;color:var(--accent)}
+@keyframes blink{50%{opacity:0}}
+.composer{display:flex;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+textarea{flex:1;resize:none;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 12px;min-height:44px;max-height:140px;outline:none}
+textarea:focus,input:focus{border-color:var(--accent)}
+.btn{background:var(--accent);color:var(--accent-text);border:0;border-radius:10px;padding:0 18px;font-weight:600;cursor:pointer;min-height:44px}
+.btn:hover{background:var(--accent2)} .btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.stop{background:var(--bad);color:#fff}
+.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px;display:flex;justify-content:space-between}
+label b{color:var(--text);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=number]{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;outline:none}
+.side .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.side .row:last-child{border:0} .side .row span:first-child{color:var(--muted)}
+/* charts */
+canvas{width:100%;height:150px;display:block}
+.legend{font-size:12px;color:var(--muted);margin-top:6px;display:flex;gap:14px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.bar-track{height:10px;background:var(--panel2);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#22b8cf);transition:width .4s}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.tablewrap{overflow-x:auto}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end}
+.form label{margin:0 0 4px}
+pre.note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto;font-size:13px}
+.about p,.about li{color:var(--text)} .about code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:13px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:14px}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand"><div class="logo">⚡</div><span>Distributed LLM Grid</span></div>
+    <span class="pill" id="statusPill"><span class="dot" id="statusDot"></span><span id="statusText">connecting…</span></span>
+    <span class="pill" id="tpPill" hidden></span>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="themeBtn" title="Toggle theme">🌓</button>
+  </div>
+  <nav id="tabs">
+    <button data-tab="chat" class="active">Playground</button>
+    <button data-tab="dash">Dashboard</button>
+    <button data-tab="load">Load test</button>
+    <button data-tab="about">Cluster &amp; API</button>
+  </nav>
+</header>
+
+<main>
+<!-- ============ PLAYGROUND ============ -->
+<section id="tab-chat" class="active">
+  <div class="banner" id="demoBanner" hidden>
+    ℹ️ This cluster runs a small <b>demo model with random weights</b>, so generated text is gibberish by design — the goal is to
+    show the distributed system (sharding, batching, streaming). Point <code>--model-dir</code> at a real Llama checkpoint for meaningful text.
+  </div>
+  <div class="chat">
+    <div class="card thread">
+      <div class="msgs" id="msgs">
+        <div class="empty" id="empty">
+          <h2>Talk to the cluster</h2>
+          <div>Your prompt is tokenized on the gateway, batched with other users’ requests, and executed across all tensor-parallel workers. Tokens stream back live.</div>
+          <div class="chips">
+            <span class="chip">Explain distributed inference.</span>
+            <span class="chip">Write a haiku about GPUs.</span>
+            <span class="chip">What is continuous batching?</span>
+          </div>
+        </div>
+      </div>
+      <div class="composer">
+        <textarea id="prompt" rows="1" placeholder="Type a prompt… (Enter to send, Shift+Enter for new line)"></textarea>
+        <button class="btn" id="sendBtn">Send</button>
+      </div>
+    </div>
+    <div class="grid side">
+      <div class="card">
+        <h3>Generation</h3>
+        <label>Max new tokens <b id="vMax">64</b></label>
+        <input type="range" id="max" min="1" max="512" value="64">
+        <label>Temperature <b id="vTemp">0.8</b></label>
+        <input type="range" id="temp" min="0" max="2" step="0.05" value="0.8">
+        <label>Top-k <b id="vTopk">40</b></label>
+        <input type="range" id="topk" min="0" max="200" value="40">
+        <div style="margin-top:12px"><button class="btn ghost" id="clearBtn" style="width:100%">Clear conversation</button></div>
+      </div>
+      <div class="card">
+        <h3>Last response</h3>
+        <div class="row"><span>TTFT</span><span id="lTtft">–</span></div>
+        <div class="row"><span>Tokens</span><span id="lTok">–</span></div>
+        <div class="row"><span>Speed</span><span id="lSpeed">–</span></div>
+        <div class="row"><span>Finish</span><span id="lFin">–</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DASHBOARD ============ -->
+<section id="tab-dash">
+  <div class="grid kpis">
+    <div class="card kpi"><div class="v" id="kTps">0</div><div class="l">tokens / second</div><div class="s">live (1 s window)</div></div>
+    <div class="card kpi"><div class="v"><span id="kRun">0</span> <span style="color:var(--muted);font-size:16px">/ <span id="kWait">0</span></span></div><div class="l">running / waiting</div><div class="s">requests</div></div>
+    <div class="card kpi"><div class="v" id="kBatch">–</div><div class="l">avg batch size</div><div class="s">sequences per iteration</div></div>
+    <div class="card kpi"><div class="v" id="kTtft">–</div><div class="l">TTFT p50 (ms)</div><div class="s">p95: <span id="kTtft95">–</span></div></div>
+    <div class="card kpi"><div class="v" id="kStep">–</div><div class="l">step time (ms)</div><div class="s">p95: <span id="kStep95">–</span></div></div>
+    <div class="card kpi"><div class="v" id="kComm">–</div><div class="l">all-reduce / step (ms)</div><div class="s">inter-node tensor traffic</div></div>
+    <div class="card kpi"><div class="v" id="kNet">–</div><div class="l">gRPC overhead (ms)</div><div class="s">master ↔ workers</div></div>
+    <div class="card kpi"><div class="v" id="kTotal">0</div><div class="l">total requests</div><div class="s"><span id="kFail">0</span> failed · <span id="kTokTotal">0</span> tokens</div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>KV-cache usage (paged blocks)</h3>
+    <div class="bar-track"><div class="bar-fill" id="kvFill"></div></div>
+    <div style="font-size:13px;color:var(--muted);margin-top:6px"><span id="kvPct">0%</span> of <span id="kvCap">–</span> token slots reserved</div>
+  </div>
+  <div class="grid cols2" style="margin-top:14px">
+    <div class="card"><h3>Throughput (tokens/s)</h3><canvas id="cTps"></canvas></div>
+    <div class="card"><h3>Active sequences</h3><canvas id="cSeq"></canvas>
+      <div class="legend"><span><i style="background:#4f46e5"></i>running</span><span><i style="background:#f59f00"></i>waiting</span></div></div>
+    <div class="card"><h3>Step latency (ms)</h3><canvas id="cStep"></canvas>
+      <div class="legend"><span><i style="background:#4f46e5"></i>total step</span><span><i style="background:#12b886"></i>all-reduce</span></div></div>
+    <div class="card"><h3>KV-cache usage (%)</h3><canvas id="cKv"></canvas></div>
+  </div>
+</section>
+
+<!-- ============ LOAD TEST ============ -->
+<section id="tab-load">
+  <div class="card">
+    <h3>Concurrent load test (runs from your browser over WebSockets)</h3>
+    <div class="form">
+      <div><label>Concurrency</label><input type="number" id="ltConc" value="16" min="1" max="64"></div>
+      <div><label>Total requests</label><input type="number" id="ltReq" value="48" min="1" max="1000"></div>
+      <div><label>Max new tokens</label><input type="number" id="ltTok" value="32" min="1" max="256"></div>
+      <div><button class="btn" id="ltStart" style="width:100%">Start test</button></div>
+    </div>
+    <div style="margin-top:14px"><div class="bar-track"><div class="bar-fill" id="ltBar"></div></div>
+      <div style="font-size:13px;color:var(--muted);margin-top:6px" id="ltStatus">Idle. Tip: keep the Dashboard open in another tab to watch continuous batching live.</div></div>
+  </div>
+  <div class="grid kpis" style="margin-top:14px" id="ltKpis" hidden>
+    <div class="card kpi"><div class="v" id="rTps">–</div><div class="l">tokens / second</div></div>
+    <div class="card kpi"><div class="v" id="rRps">–</div><div class="l">requests / second</div></div>
+    <div class="card kpi"><div class="v" id="rTtft">–</div><div class="l">TTFT p50 (ms)</div><div class="s">p95: <span id="rTtft95">–</span> · p99: <span id="rTtft99">–</span></div></div>
+    <div class="card kpi"><div class="v" id="rLat">–</div><div class="l">latency p50 (ms)</div><div class="s">p95: <span id="rLat95">–</span></div></div>
+    <div class="card kpi"><div class="v" id="rOk">–</div><div class="l">succeeded</div><div class="s"><span id="rFail">0</span> failed</div></div>
+  </div>
+</section>
+
+<!-- ============ ABOUT ============ -->
+<section id="tab-about" class="about">
+  <div class="grid cols2">
+    <div class="card"><h3>Model</h3><div class="tablewrap"><table id="modelTable"></table></div></div>
+    <div class="card"><h3>Workers (tensor-parallel ranks)</h3><div class="tablewrap"><table id="workerTable"></table></div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>API</h3>
+    <p style="margin-top:0">WebSocket <code>/ws/generate</code> — send JSON, receive streamed token frames:</p>
+<pre class="note">// client → server
+{"prompt": "Hello", "max_new_tokens": 64, "temperature": 0.8, "top_k": 40}
+// server → client (repeated)
+{"type": "token", "token_id": 12, "text": "a"}
+// server → client (final)
+{"type": "done", "finish_reason": "length", "ttft_ms": 14.2, "tokens": 64}</pre>
+    <p>HTTP: <code>POST /v1/generate</code> · <code>POST /v1/generate/stream</code> (SSE) · <code>GET /metrics</code> · <code>GET /health</code> · interactive docs at <a href="/docs" style="color:var(--accent)">/docs</a></p>
+  </div>
+</section>
+</main>
+<footer>Distributed Memory Grid · tensor parallelism · paged KV cache · continuous batching</footer>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws/generate";
+const fmt = (v, d = 1) => (v === null || v === undefined || Number.isNaN(v)) ? "–" : Number(v).toFixed(d);
+const fmtInt = (v) => Number(v || 0).toLocaleString();
+
+/* ---------- theme ---------- */
+(function () {
+  const saved = localStorage.getItem("theme");
+  const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  $("themeBtn").onclick = () => {
+    const d = document.documentElement.dataset.theme !== "dark";
+    document.documentElement.dataset.theme = d ? "dark" : "light";
+    localStorage.setItem("theme", d ? "dark" : "light");
+    drawAll();
+  };
+})();
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("#tabs button").forEach((b) => {
+  b.onclick = () => {
+    document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("active", x === b));
+    document.querySelectorAll("main > section").forEach((s) => s.classList.toggle("active", s.id === "tab-" + b.dataset.tab));
+    if (b.dataset.tab === "dash") drawAll();
+  };
+});
+
+/* ---------- cluster info / status ---------- */
+let info = null;
+async function loadInfo() {
+  try {
+    const r = await fetch("/api/info");
+    info = await r.json();
+    $("statusDot").className = "dot ok";
+    $("statusText").textContent = "cluster ready";
+    $("tpPill").hidden = false;
+    $("tpPill").textContent = "TP × " + info.tensor_parallel_size + " · " + info.model;
+    $("demoBanner").hidden = !info.demo_model;
+    $("kvCap").textContent = fmtInt(info.kv_capacity_tokens);
+    const rows = [
+      ["Name", info.model], ["Parameters", (info.parameters / 1e6).toFixed(2) + " M"], ["Layers", info.layers],
+      ["Hidden size", info.hidden_size], ["Attention heads", info.heads + " (KV: " + info.kv_heads + ")"],
+      ["Max context", fmtInt(info.max_context)], ["KV blocks", info.kv_num_blocks + " × " + info.kv_block_size + " tokens"],
+      ["Max batch", info.max_batch_seqs + " sequences"],
+    ];
+    $("modelTable").innerHTML = rows.map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("");
+    $("workerTable").innerHTML = "<tr><th>Rank</th><th>Address</th><th>Backend</th><th>Device</th></tr>" +
+      info.workers.map((w) => `<tr><td>${w.rank}</td><td>${w.address}</td><td>${w.backend}</td><td>${w.device}</td></tr>`).join("");
+  } catch (e) {
+    $("statusDot").className = "dot err";
+    $("statusText").textContent = "gateway unreachable";
+    setTimeout(loadInfo, 2000);
+  }
+}
+loadInfo();
+
+/* ---------- playground ---------- */
+const bind = (id, out, f = (v) => v) => { const el = $(id); const u = () => ($(out).textContent = f(el.value)); el.oninput = u; u(); };
+bind("max", "vMax"); bind("temp", "vTemp", (v) => Number(v).toFixed(2)); bind("topk", "vTopk");
+
+const msgs = $("msgs"), promptEl = $("prompt"), sendBtn = $("sendBtn");
+let ws = null, busy = false;
+
+function addMsg(cls, text) {
+  const empty = $("empty"); if (empty) empty.remove();
+  const d = document.createElement("div");
+  d.className = "msg " + cls; d.textContent = text;
+  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+  return d;
+}
+document.querySelectorAll(".chip").forEach((c) => (c.onclick = () => { promptEl.value = c.textContent; send(); }));
+$("clearBtn").onclick = () => { stop(); msgs.innerHTML = ""; };
+
+function setBusy(b) {
+  busy = b;
+  sendBtn.textContent = b ? "Stop" : "Send";
+  sendBtn.classList.toggle("stop", b);
+}
+
+function stop() { if (ws) { try { ws.close(); } catch (e) {} ws = null; } setBusy(false); }
+
+function send() {
+  if (busy) { stop(); return; }
+  const text = promptEl.value.trim();
+  if (!text) return;
+  promptEl.value = ""; promptEl.style.height = "auto";
+  addMsg("user", text);
+  const bot = addMsg("bot cursor", "");
+  const body = document.createElement("span"); bot.appendChild(body);
+  const meta = document.createElement("div"); meta.className = "meta"; bot.appendChild(meta);
+  setBusy(true);
+  const t0 = performance.now(); let first = null, n = 0, finished = false;
+  const sock = new WebSocket(WS_URL); ws = sock;
+  sock.onopen = () => sock.send(JSON.stringify({
+    prompt: text, max_new_tokens: +$("max").value, temperature: +$("temp").value, top_k: +$("topk").value }));
+  sock.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.type === "token") {
+      if (first === null) first = performance.now() - t0;
+      n++; body.textContent += m.text; msgs.scrollTop = msgs.scrollHeight;
+    } else if (m.type === "done") {
+      finished = true;
+      const el = (performance.now() - t0) / 1000;
+      const speed = n / Math.max(el - (first || 0) / 1000, 0.001);
+      meta.textContent = `TTFT ${fmt(m.ttft_ms)} ms · ${n} tokens · ${fmt(speed)} tok/s · ${m.finish_reason}`;
+      $("lTtft").textContent = fmt(m.ttft_ms) + " ms"; $("lTok").textContent = n;
+      $("lSpeed").textContent = fmt(speed) + " tok/s"; $("lFin").textContent = m.finish_reason;
+      bot.classList.remove("cursor"); sock.close();
+    } else if (m.type === "error") {
+      finished = true; bot.classList.remove("cursor"); bot.classList.add("err");
+      body.textContent = m.message; sock.close();
+    }
+  };
+  sock.onerror = () => { if (!finished) { bot.classList.remove("cursor"); bot.classList.add("err"); body.textContent = "Connection error — is the gateway running?"; } };
+  sock.onclose = () => {
+    if (ws === sock) { ws = null; setBusy(false); }
+    bot.classList.remove("cursor");
+    if (!finished && !bot.classList.contains("err")) meta.textContent = "stopped";
+  };
+}
+sendBtn.onclick = send;
+promptEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+promptEl.addEventListener("input", () => { promptEl.style.height = "auto"; promptEl.style.height = Math.min(promptEl.scrollHeight, 140) + "px"; });
+
+/* ---------- dashboard ---------- */
+const HIST = 90;
+const hist = { tps: [], run: [], wait: [], step: [], comm: [], kv: [] };
+let lastTok = null, lastT = null;
+
+function push(arr, v) { arr.push(v); if (arr.length > HIST) arr.shift(); }
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function drawChart(canvas, series, opts = {}) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const g = canvas.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
+  const pad = { l: 38, r: 8, t: 8, b: 16 };
+  const all = series.flatMap((s) => s.data);
+  let max = opts.max ?? Math.max(1, ...all) * 1.15;
+  const line = css("--line"), muted = css("--muted");
+  g.font = "11px system-ui"; g.fillStyle = muted; g.strokeStyle = line; g.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) {
+    const y = pad.t + (h - pad.t - pad.b) * (i / 3);
+    g.beginPath(); g.moveTo(pad.l, y); g.lineTo(w - pad.r, y); g.stroke();
+    const val = max * (1 - i / 3);
+    g.fillText(val >= 100 ? val.toFixed(0) : val.toFixed(1), 2, y + 4);
+  }
+  series.forEach((s) => {
+    if (s.data.length < 2) return;
+    g.strokeStyle = s.color; g.lineWidth = 2; g.beginPath();
+    s.data.forEach((v, i) => {
+      const xx = pad.l + (w - pad.l - pad.r) * ((i + HIST - s.data.length) / (HIST - 1));
+      const y = pad.t + (h - pad.t - pad.b) * (1 - Math.min(v, max) / max);
+      i ? g.lineTo(xx, y) : g.moveTo(xx, y);
+    });
+    g.stroke();
+  });
+}
+function drawAll() {
+  drawChart($("cTps"), [{ data: hist.tps, color: "#4f46e5" }]);
+  drawChart($("cSeq"), [{ data: hist.run, color: "#4f46e5" }, { data: hist.wait, color: "#f59f00" }]);
+  drawChart($("cStep"), [{ data: hist.step, color: "#4f46e5" }, { data: hist.comm, color: "#12b886" }]);
+  drawChart($("cKv"), [{ data: hist.kv, color: "#22b8cf" }], { max: 100 });
+}
+window.addEventListener("resize", drawAll);
+
+async function poll() {
+  try {
+    const m = await (await fetch("/metrics")).json();
+    const now = performance.now();
+    let tps = 0;
+    if (lastTok !== null) tps = Math.max(0, (m.tokens_generated - lastTok) / ((now - lastT) / 1000));
+    lastTok = m.tokens_generated; lastT = now;
+    push(hist.tps, tps); push(hist.run, m.requests.running); push(hist.wait, m.requests.waiting);
+    push(hist.step, m.step_ms.avg || 0); push(hist.comm, m.worker_allreduce_ms.avg || 0); push(hist.kv, m.kv_cache_usage * 100);
+    $("kTps").textContent = fmt(tps, 0);
+    $("kRun").textContent = m.requests.running; $("kWait").textContent = m.requests.waiting;
+    $("kBatch").textContent = fmt(m.avg_batch_size, 1);
+    $("kTtft").textContent = fmt(m.ttft_ms.p50); $("kTtft95").textContent = fmt(m.ttft_ms.p95);
+    $("kStep").textContent = fmt(m.step_ms.avg); $("kStep95").textContent = fmt(m.step_ms.p95);
+    $("kComm").textContent = fmt(m.worker_allreduce_ms.avg); $("kNet").textContent = fmt(m.inter_node_overhead_ms.avg);
+    $("kTotal").textContent = fmtInt(m.requests.total); $("kFail").textContent = m.requests.failed;
+    $("kTokTotal").textContent = fmtInt(m.tokens_generated);
+    const pct = m.kv_cache_usage * 100;
+    $("kvFill").style.width = pct + "%"; $("kvPct").textContent = pct.toFixed(1) + "%";
+    if ($("tab-dash").classList.contains("active")) drawAll();
+    if ($("statusDot").className !== "dot ok") { $("statusDot").className = "dot ok"; $("statusText").textContent = "cluster ready"; }
+  } catch (e) {
+    $("statusDot").className = "dot err"; $("statusText").textContent = "gateway unreachable";
+  }
+}
+setInterval(poll, 1000); poll();
+
+/* ---------- load test ---------- */
+function pct(xs, p) { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; }
+
+function oneRequest(tokens) {
+  return new Promise((resolve) => {
+    const t0 = performance.now(); let ttft = null, n = 0, done = false;
+    const s = new WebSocket(WS_URL);
+    const finish = (ok) => { if (done) return; done = true; try { s.close(); } catch (e) {} resolve({ ok, ttft, n, total: performance.now() - t0 }); };
+    s.onopen = () => s.send(JSON.stringify({ prompt: "Explain distributed inference. Explain distributed inference.", max_new_tokens: tokens, temperature: 0.8, top_k: 40 }));
+    s.onmessage = (ev) => {
+      const m = JSON.parse(ev.data);
+      if (m.type === "token") { n++; if (ttft === null) ttft = performance.now() - t0; }
+      else if (m.type === "done") finish(true); else finish(false);
+    };
+    s.onerror = () => finish(false);
+    s.onclose = () => finish(false);
+  });
+}
+
+let ltRunning = false;
+$("ltStart").onclick = async () => {
+  if (ltRunning) return;
+  ltRunning = true; $("ltStart").disabled = true;
+  const conc = Math.max(1, Math.min(64, +$("ltConc").value || 1));
+  const total = Math.max(1, Math.min(1000, +$("ltReq").value || 1));
+  const tokens = Math.max(1, Math.min(256, +$("ltTok").value || 1));
+  const results = []; let started = 0;
+  $("ltKpis").hidden = true; $("ltBar").style.width = "0";
+  const t0 = performance.now();
+  const worker = async () => {
+    while (started < total) {
+      started++;
+      results.push(await oneRequest(tokens));
+      $("ltBar").style.width = (results.length / total) * 100 + "%";
+      $("ltStatus").textContent = `Running… ${results.length} / ${total} complete (${conc} concurrent)`;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(conc, total) }, worker));
+  const wall = (performance.now() - t0) / 1000;
+  const ok = results.filter((r) => r.ok);
+  const tok = ok.reduce((a, r) => a + r.n, 0);
+  const tt = ok.map((r) => r.ttft).filter((v) => v !== null), lat = ok.map((r) => r.total);
+  $("rTps").textContent = fmt(tok / wall, 0); $("rRps").textContent = fmt(ok.length / wall, 1);
+  $("rTtft").textContent = fmt(pct(tt, 50), 0); $("rTtft95").textContent = fmt(pct(tt, 95), 0); $("rTtft99").textContent = fmt(pct(tt, 99), 0);
+  $("rLat").textContent = fmt(pct(lat, 50), 0); $("rLat95").textContent = fmt(pct(lat, 95), 0);
+  $("rOk").textContent = ok.length + " / " + total; $("rFail").textContent = total - ok.length;
+  $("ltKpis").hidden = false;
+  $("ltStatus").textContent = `Finished in ${wall.toFixed(2)} s.`;
+  $("ltStart").disabled = false; ltRunning = false;
+};
+</script>
+</body>
+</html>

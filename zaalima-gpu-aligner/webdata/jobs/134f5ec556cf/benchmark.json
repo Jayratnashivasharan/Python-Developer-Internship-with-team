@@ -1,0 +1,38 @@
+{
+  "kernels": {
+    "python": {
+      "pairs": 100,
+      "seconds": 0.7889,
+      "alignments_per_sec": 126.8,
+      "cells_per_sec": 1774512.0,
+      "identical_to_cpu": true
+    },
+    "cpu": {
+      "pairs": 4096,
+      "seconds": 0.0527,
+      "alignments_per_sec": 77764.4,
+      "cells_per_sec": 1088701945.0,
+      "identical_to_cpu": true
+    }
+  },
+  "end_to_end": {
+    "gpualign_index_seconds": 0.16,
+    "gpualign": {
+      "backend": "cpu",
+      "device": "",
+      "reads": 20000,
+      "seconds": 4.37,
+      "reads_per_sec": 4575.9,
+      "variant_accuracy": {
+        "truth": 386,
+        "called": 380,
+        "tp": 380,
+        "precision": 1.0,
+        "recall": 0.9845
+      }
+    },
+    "bwa_mem": "not installed",
+    "bowtie2": "not installed"
+  },
+  "max_query": 256
+}

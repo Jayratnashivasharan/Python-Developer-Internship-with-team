@@ -1,0 +1,26 @@
+# Local multi-container cluster:  docker compose -f deploy/docker/docker-compose.yml up --build
+# Generate a demo model first:    python -m grid.weights.make_tiny_model --out models/tiny-llama
+x-common: &common
+  build: {context: ../.., dockerfile: deploy/docker/Dockerfile}
+  volumes: ["../../models:/models:ro"]
+
+x-env: &env
+  GRID_MODEL_DIR: /models/tiny-llama
+  GRID_WORKERS: worker0:50051,worker1:50051
+  WORLD_SIZE: "2"
+  MASTER_ADDR: worker0
+  MASTER_PORT: "29500"
+
+services:
+  worker0:
+    <<: *common
+    environment: {<<: *env, RANK: "0"}
+  worker1:
+    <<: *common
+    environment: {<<: *env, RANK: "1"}
+  gateway:
+    <<: *common
+    environment: *env
+    command: ["uvicorn", "grid.gateway.app:get_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+    ports: ["8000:8000"]
+    depends_on: [worker0, worker1]

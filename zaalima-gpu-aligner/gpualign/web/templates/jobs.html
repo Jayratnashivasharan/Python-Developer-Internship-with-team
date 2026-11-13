@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Jobs{% endblock %}
+{% block content %}
+<div class="card-head"><h1>Jobs</h1><a class="btn primary" href="{{ url_for('new_job') }}">New alignment</a></div>
+<section class="card">
+{% if jobs %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Created</th><th>Duration</th><th></th></tr></thead>
+    <tbody>
+    {% for j in jobs %}
+      <tr>
+        <td><a href="{{ url_for('job_page', jid=j.id) }}">{{ j.name }}</a><div class="muted small">{{ j.id }}</div></td>
+        <td>{{ j.kind }}</td>
+        <td><span class="badge {{ j.status }}">{{ j.status }}</span></td>
+        <td>{{ j.created|dt }}</td><td>{{ j.elapsed|dur }}</td>
+        <td class="right">
+          {% if j.status not in ('queued', 'running') %}
+          <form method="post" action="{{ url_for('delete_job', jid=j.id) }}" class="inline" data-confirm="Delete this job and its results?">
+            <button class="btn small danger" type="submit">Delete</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+{% else %}
+  <p class="muted">No jobs yet. <a href="{{ url_for('new_job') }}">Start your first alignment</a>.</p>
+{% endif %}
+</section>
+{% endblock %}

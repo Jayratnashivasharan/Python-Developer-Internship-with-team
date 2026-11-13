@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}New alignment{% endblock %}
+{% block content %}
+<h1>New alignment</h1>
+<form id="job-form" class="card form" autocomplete="off" novalidate>
+  <div id="form-errors" class="alert error" hidden></div>
+
+  <div class="field">
+    <label for="name">Job name <span class="muted">(optional)</span></label>
+    <input type="text" id="name" name="name" maxlength="80" placeholder="e.g. Sample A vs GRCh38 chr21">
+  </div>
+
+  <fieldset class="field">
+    <legend>Data source</legend>
+    <div class="seg">
+      <label><input type="radio" name="source" value="demo" checked><span>Simulated demo data</span></label>
+      <label><input type="radio" name="source" value="upload"><span>Upload my files</span></label>
+    </div>
+  </fieldset>
+
+  <div id="demo-fields" class="grid cols-3">
+    <div class="field"><label for="genome_size">Genome size (bp)</label>
+      <input type="number" id="genome_size" name="genome_size" value="100000" min="10000" max="5000000" step="1000"></div>
+    <div class="field"><label for="coverage">Coverage (&times;)</label>
+      <input type="number" id="coverage" name="coverage" value="20" min="1" max="100" step="1"></div>
+    <div class="field"><label for="read_len">Read length (bp)</label>
+      <input type="number" id="read_len" name="read_len" value="100" min="50" max="{{ [250, sys.max_query]|min }}"></div>
+    <div class="field wide">
+      <div class="presets">
+        <span class="muted">Presets:</span>
+        <button type="button" class="chip" data-preset="50000,15">Tiny (50 kb, 15&times;)</button>
+        <button type="button" class="chip" data-preset="100000,20">Small (100 kb, 20&times;)</button>
+        <button type="button" class="chip" data-preset="300000,30">Medium (300 kb, 30&times;)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="upload-fields" hidden>
+    <div class="field"><label for="reference">Reference genome (FASTA, uncompressed)</label>
+      <input type="file" id="reference" name="reference" accept=".fa,.fasta,.fna,.fas,.txt"></div>
+    <div class="field"><label for="reads">Reads (FASTQ or FASTQ.GZ)</label>
+      <input type="file" id="reads" name="reads" accept=".fq,.fastq,.gz,.txt"></div>
+    <div class="field"><label for="truth">Truth VCF <span class="muted">(optional &mdash; enables precision/recall)</span></label>
+      <input type="file" id="truth" name="truth" accept=".vcf,.txt"></div>
+    <p class="hint">Read length up to {{ sys.max_query }} bp. Reference index is built in memory &mdash; suitable up to a few hundred Mbp.</p>
+  </div>
+
+  <div class="field">
+    <label for="backend">Compute backend</label>
+    <select id="backend" name="backend">
+      {% for b in sys.backends %}
+        {% if b != 'python' %}<option value="{{ b }}" {{ 'selected' if b == sys.default_backend }}>{{ {'cuda': 'CUDA GPU', 'cpu': 'CPU (Numba, multi-core)'}[b] }}{{ ' (recommended)' if b == sys.default_backend }}</option>{% endif %}
+      {% endfor %}
+    </select>
+    {% if not sys.gpus and not sys.cuda_simulator %}<p class="hint">No NVIDIA GPU detected, so the CPU backend (same algorithm) is used.</p>{% endif %}
+  </div>
+
+  <details class="adv">
+    <summary>Advanced options</summary>
+    <div class="grid cols-3">
+      <div class="field"><label for="batch_size">Batch size (reads)</label><input type="number" id="batch_size" name="batch_size" value="2048" min="64" max="32768"></div>
+      <div class="field"><label for="threads">Worker threads</label><input type="number" id="threads" name="threads" value="2" min="1" max="16"></div>
+      <div class="field"><label for="seed_k">Seed length (k)</label><input type="number" id="seed_k" name="seed_k" value="16" min="10" max="32"></div>
+      <div class="field"><label for="min_score_frac">Min score fraction</label><input type="number" id="min_score_frac" name="min_score_frac" value="0.5" min="0.1" max="1" step="0.05"></div>
+      <div class="field"><label for="min_alt">Min supporting reads</label><input type="number" id="min_alt" name="min_alt" value="3" min="1" max="100"></div>
+      <div class="field"><label for="min_af">Min allele fraction</label><input type="number" id="min_af" name="min_af" value="0.25" min="0.01" max="1" step="0.05"></div>
+      <div class="field"><label for="min_depth">Min depth</label><input type="number" id="min_depth" name="min_depth" value="4" min="1" max="1000"></div>
+      {% if 'cuda' in sys.backends %}
+      <div class="field"><label class="check"><input type="checkbox" name="mapped"> CUDA mapped (zero-copy) memory</label></div>
+      {% endif %}
+    </div>
+  </details>
+
+  <div id="upload-progress" class="progress-wrap" hidden>
+    <div class="progress"><div class="progress-bar" id="upload-bar"></div></div>
+    <div class="muted small" id="upload-text">Uploading&hellip;</div>
+  </div>
+
+  <div class="actions">
+    <button type="submit" id="submit-btn" class="btn primary">Start alignment</button>
+    <a class="btn" href="{{ url_for('jobs_page') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='new_job.js') }}"></script>{% endblock %}

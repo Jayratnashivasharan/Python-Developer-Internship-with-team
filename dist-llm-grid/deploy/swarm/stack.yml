@@ -1,0 +1,43 @@
+# Docker Swarm deployment with node affinity (placement constraints).
+#   docker node update --label-add role=worker --label-add rank=0 <node-a>
+#   docker node update --label-add role=worker --label-add rank=1 <node-b>
+#   docker node update --label-add role=gateway <node-c>
+#   docker stack deploy -c deploy/swarm/stack.yml grid
+version: "3.8"
+
+x-env: &env
+  GRID_MODEL_DIR: /models/llama
+  GRID_WORKERS: worker0:50051,worker1:50051
+  WORLD_SIZE: "2"
+  MASTER_ADDR: worker0
+  MASTER_PORT: "29500"
+
+services:
+  worker0:
+    image: grid:cpu
+    environment: {<<: *env, RANK: "0"}
+    volumes: ["/data/models:/models:ro"]
+    networks: [gridnet]
+    deploy:
+      placement: {constraints: ["node.labels.role == worker", "node.labels.rank == 0"]}
+      restart_policy: {condition: on-failure}
+  worker1:
+    image: grid:cpu
+    environment: {<<: *env, RANK: "1"}
+    volumes: ["/data/models:/models:ro"]
+    networks: [gridnet]
+    deploy:
+      placement: {constraints: ["node.labels.role == worker", "node.labels.rank == 1"]}
+      restart_policy: {condition: on-failure}
+  gateway:
+    image: grid:cpu
+    command: ["uvicorn", "grid.gateway.app:get_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+    environment: *env
+    volumes: ["/data/models:/models:ro"]
+    ports: ["8000:8000"]
+    networks: [gridnet]
+    deploy:
+      placement: {constraints: ["node.labels.role == gateway"]}
+
+networks:
+  gridnet: {driver: overlay}

@@ -1,0 +1,84 @@
+# Kubernetes deployment.   kubectl apply -f deploy/k8s/grid.yaml
+# Workers = StatefulSet: pod "grid-worker-N" is rank N with stable DNS grid-worker-N.grid-worker.
+# nodeAffinity pins workers to labelled nodes (kubectl label node <n> grid/role=worker);
+# podAntiAffinity guarantees one rank per node.
+apiVersion: v1
+kind: Service
+metadata: {name: grid-worker}
+spec:
+  clusterIP: None
+  selector: {app: grid-worker}
+  ports:
+    - {name: grpc, port: 50051}
+    - {name: dist, port: 29500}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: grid-worker}
+spec:
+  serviceName: grid-worker
+  replicas: 2
+  podManagementPolicy: Parallel
+  selector: {matchLabels: {app: grid-worker}}
+  template:
+    metadata: {labels: {app: grid-worker}}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions: [{key: grid/role, operator: In, values: [worker]}]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector: {matchLabels: {app: grid-worker}}
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: worker
+          image: grid:cpu                       # push to your registry and change this
+          command: ["python", "-m", "grid.worker.server"]   # RANK derived from pod ordinal
+          env:
+            - {name: GRID_MODEL_DIR, value: /models/llama}
+            - {name: GRID_WORKERS, value: "grid-worker-0.grid-worker:50051,grid-worker-1.grid-worker:50051"}
+            - {name: WORLD_SIZE, value: "2"}
+            - {name: MASTER_ADDR, value: grid-worker-0.grid-worker}
+            - {name: MASTER_PORT, value: "29500"}
+          ports: [{containerPort: 50051}, {containerPort: 29500}]
+          readinessProbe: {tcpSocket: {port: 50051}, initialDelaySeconds: 10, periodSeconds: 5}
+          resources:
+            requests: {cpu: "2", memory: 4Gi}
+            # GPU nodes: add limits {nvidia.com/gpu: 1} and use the grid:gpu image
+          volumeMounts: [{name: models, mountPath: /models, readOnly: true}]
+      volumes:
+        - name: models
+          hostPath: {path: /data/models}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: grid-gateway}
+spec:
+  replicas: 1          # single master: owns scheduling and the KV block table
+  selector: {matchLabels: {app: grid-gateway}}
+  template:
+    metadata: {labels: {app: grid-gateway}}
+    spec:
+      containers:
+        - name: gateway
+          image: grid:cpu
+          command: ["uvicorn", "grid.gateway.app:get_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+          env:
+            - {name: GRID_MODEL_DIR, value: /models/llama}
+            - {name: GRID_WORKERS, value: "grid-worker-0.grid-worker:50051,grid-worker-1.grid-worker:50051"}
+          ports: [{containerPort: 8000}]
+          readinessProbe: {httpGet: {path: /health, port: 8000}, periodSeconds: 5}
+          volumeMounts: [{name: models, mountPath: /models, readOnly: true}]
+      volumes:
+        - name: models
+          hostPath: {path: /data/models}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: grid-gateway}
+spec:
+  type: LoadBalancer
+  selector: {app: grid-gateway}
+  ports: [{port: 80, targetPort: 8000}]

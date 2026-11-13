@@ -1,0 +1,44 @@
+syntax = "proto3";
+package grid;
+
+// Control plane between the master (scheduler) and every tensor-parallel worker.
+// Tensor data (activations) never travels over this channel: workers exchange
+// them directly through torch.distributed (NCCL on GPU, Gloo on CPU).
+
+service Worker {
+  rpc Step(StepRequest) returns (StepReply);
+  rpc Health(HealthRequest) returns (HealthReply);
+}
+
+message SeqStep {
+  int64 seq_id = 1;
+  repeated int32 token_ids = 2;   // prompt (prefill) or the last generated token (decode)
+  int32 start_pos = 3;            // absolute position of token_ids[0]
+  repeated int32 block_table = 4; // KV-cache blocks owned by this sequence
+  float temperature = 5;          // 0 => greedy
+  int32 top_k = 6;                // 0 => disabled
+}
+
+message StepRequest {
+  int64 step_id = 1;
+  repeated SeqStep seqs = 2;
+}
+
+message StepReply {
+  int64 step_id = 1;
+  int32 rank = 2;
+  repeated int32 next_tokens = 3; // aligned with StepRequest.seqs (sampled on rank 0)
+  double compute_ms = 4;          // wall time of the forward pass on this worker
+  double comm_ms = 5;             // time spent inside collectives (all-reduce)
+}
+
+message HealthRequest {}
+
+message HealthReply {
+  bool ready = 1;
+  int32 rank = 2;
+  int32 world_size = 3;
+  string backend = 4;
+  string device = 5;
+  int32 free_kv_blocks = 6;
+}

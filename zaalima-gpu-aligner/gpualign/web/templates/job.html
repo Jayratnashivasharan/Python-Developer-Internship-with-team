@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ job.name }}{% endblock %}
+{% block content %}
+<div id="job-root" data-id="{{ job.id }}" data-kind="{{ job.kind }}">
+  <div class="card-head wrap">
+    <div>
+      <h1 id="job-title"></h1>
+      <div class="muted small">ID {{ job.id }} &middot; created {{ job.created|dt }}</div>
+    </div>
+    <div><span id="status-badge" class="badge"></span></div>
+  </div>
+
+  <section class="card" id="progress-card">
+    <div class="progress-head"><strong id="stage-text"></strong><span id="progress-pct" class="muted"></span></div>
+    <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+    <div id="live" class="grid cols-4 live" hidden></div>
+    <div id="chart-wrap" hidden>
+      <div class="muted small">Throughput (reads/second)</div>
+      <canvas id="chart" height="140"></canvas>
+    </div>
+  </section>
+
+  <div id="error-box" class="alert error" hidden></div>
+  <div id="results"></div>
+</div>
+<script type="application/json" id="job-data">{{ job|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='job.js') }}"></script>{% endblock %}

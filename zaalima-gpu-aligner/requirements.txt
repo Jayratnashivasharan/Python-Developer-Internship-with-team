@@ -1,0 +1,10 @@
+numpy>=1.23
+numba>=0.58
+rich>=13
+flask>=3.0
+waitress>=3.0
+# optional: compile the Cython FM-index core (python setup.py build_ext --inplace)
+Cython>=3.0
+setuptools>=64
+# testing
+pytest>=7

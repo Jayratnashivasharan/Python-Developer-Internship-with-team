@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}gpualign{% endblock %} · gpualign</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f766e'/><path d='M9 6c0 7 14 7 14 14M9 12c0 7 14 7 14 14M23 6c0 7-14 7-14 14' stroke='white' stroke-width='2' fill='none'/></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{{ url_for('dashboard') }}">
+    <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor"/><path d="M9 6c0 7 14 7 14 14M9 12c0 7 14 7 14 14M23 6c0 7-14 7-14 14" stroke="#fff" stroke-width="2" fill="none"/></svg>
+    <span>gpualign</span>
+  </a>
+  <button id="navtoggle" class="navtoggle" aria-label="Toggle menu" aria-expanded="false">&#9776;</button>
+  <nav id="nav" class="nav">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if page == 'dashboard' }}">Dashboard</a>
+    <a href="{{ url_for('new_job') }}" class="{{ 'active' if page == 'new' }}">New alignment</a>
+    <a href="{{ url_for('jobs_page') }}" class="{{ 'active' if page == 'jobs' }}">Jobs</a>
+    <a href="{{ url_for('benchmark_page') }}" class="{{ 'active' if page == 'benchmark' }}">Benchmark</a>
+    <a href="{{ url_for('about') }}" class="{{ 'active' if page == 'about' }}">About</a>
+  </nav>
+</header>
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+<footer class="footer">gpualign v{{ version }} &middot; GPU-accelerated Smith-Waterman aligner &middot; Zaalima Development Pvt. Ltd. internship project</footer>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

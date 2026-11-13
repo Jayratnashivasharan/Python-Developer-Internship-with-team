@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "Cython>=3.0", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpualign"
+version = "1.0.0"
+description = "High-throughput GPU (CUDA/Numba) Smith-Waterman genomic aligner with FM-index pre-filter"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.23", "numba>=0.58", "rich>=13", "flask>=3.0", "waitress>=3.0"]
+
+[project.optional-dependencies]
+dev = ["pytest", "Cython>=3.0"]
+
+[project.scripts]
+gpualign = "gpualign.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["gpualign*"]
+
+[tool.setuptools.package-data]
+gpualign = ["web/templates/*.html", "web/static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

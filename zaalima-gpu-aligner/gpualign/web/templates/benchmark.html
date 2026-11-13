@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Benchmark{% endblock %}
+{% block content %}
+<h1>Benchmark</h1>
+<p class="muted">Compares the Smith-Waterman kernels (pure Python vs CPU vs GPU) and the end-to-end pipeline. BWA and Bowtie2 are included only if installed on this machine.</p>
+<form id="bench-form" class="card form" autocomplete="off" novalidate>
+  <div id="bench-errors" class="alert error" hidden></div>
+  <div class="grid cols-3">
+    <div class="field"><label for="genome_size">Genome size (bp)</label><input type="number" id="genome_size" name="genome_size" value="200000" min="20000" max="2000000" step="10000"></div>
+    <div class="field"><label for="coverage">Coverage (&times;)</label><input type="number" id="coverage" name="coverage" value="10" min="2" max="50"></div>
+    <div class="field"><label for="backend">Pipeline backend</label>
+      <select id="backend" name="backend"><option value="auto">Auto</option><option value="cpu">CPU</option>{% if 'cuda' in sys.backends %}<option value="cuda">CUDA GPU</option>{% endif %}</select></div>
+  </div>
+  <div class="actions"><button class="btn primary" type="submit" id="bench-btn">Run benchmark</button></div>
+</form>
+<section class="card">
+  <h2>Previous runs</h2>
+  {% if runs %}
+  <div class="table-wrap"><table class="table"><thead><tr><th>Run</th><th>Status</th><th>Created</th><th>Duration</th></tr></thead><tbody>
+    {% for j in runs %}<tr><td><a href="{{ url_for('job_page', jid=j.id) }}">{{ j.name }} &middot; {{ j.id }}</a></td>
+      <td><span class="badge {{ j.status }}">{{ j.status }}</span></td><td>{{ j.created|dt }}</td><td>{{ j.elapsed|dur }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<p class="muted">No benchmark runs yet.</p>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='benchmark.js') }}"></script>{% endblock %}

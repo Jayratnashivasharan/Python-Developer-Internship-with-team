@@ -1,0 +1,48 @@
+{
+  "run": {
+    "reads_total": 20000,
+    "reads_seeded": 20000,
+    "reads_filtered": 0,
+    "reads_skipped": 0,
+    "reads_aligned": 20000,
+    "reads_lowscore": 0,
+    "gpu_cpu_mismatch": 0,
+    "batches": 10,
+    "bases": 2000000,
+    "backend": "cpu",
+    "device": "",
+    "elapsed_s": 4.132,
+    "reads_per_sec": 4840.7,
+    "kernel_seconds": 0.328
+  },
+  "variants": {
+    "SNP": 173,
+    "INS": 12,
+    "DEL": 5,
+    "total": 190,
+    "ti_tv": 0.491
+  },
+  "truth_evaluation": {
+    "all": {
+      "truth": 190,
+      "called": 190,
+      "tp": 190,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "SNP": {
+      "truth": 173,
+      "called": 173,
+      "tp": 173,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "INDEL": {
+      "truth": 17,
+      "called": 17,
+      "tp": 17,
+      "precision": 1.0,
+      "recall": 1.0
+    }
+  }
+}

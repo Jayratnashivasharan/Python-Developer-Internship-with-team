@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}About{% endblock %}
+{% block content %}
+<h1>About gpualign</h1>
+<section class="card">
+  <p>gpualign is a high-throughput DNA read aligner. It runs an affine-gap <strong>Smith-Waterman</strong> kernel on the GPU directly from Python (Numba CUDA), with an automatic multi-core CPU fallback that uses the identical algorithm.</p>
+  <h2>Pipeline</h2>
+  <ul>
+    <li><strong>I/O</strong> &mdash; memory-mapped FASTA/FASTQ, streamed in chunks (no RAM limit on read files).</li>
+    <li><strong>Pre-filter</strong> &mdash; BWT/FM-index seeding in Cython; reads without a consistent locus are dropped.</li>
+    <li><strong>Alignment</strong> &mdash; one GPU thread per read/window pair; pinned memory pool and async streams.</li>
+    <li><strong>Traceback &amp; verification</strong> &mdash; CPU traceback on survivors; GPU score is re-checked.</li>
+    <li><strong>Variants</strong> &mdash; pileup caller producing SNPs and indels in VCF 4.2.</li>
+  </ul>
+  <h2>System</h2>
+  <table class="table"><tbody>
+    <tr><th>Version</th><td>{{ version }}</td></tr>
+    <tr><th>Backends available</th><td>{{ sys.backends|join(', ') }}</td></tr>
+    <tr><th>GPU</th><td>{% if sys.gpus %}{{ sys.gpus|join(', ') }}{% elif sys.cuda_simulator %}CUDA simulator (testing){% else %}none detected{% endif %}</td></tr>
+    <tr><th>FM-index core</th><td>{{ {'cython': 'Cython (compiled)', 'numba': 'Numba JIT', 'python': 'Python fallback'}[sys.seed_engine] }}</td></tr>
+    <tr><th>CPU cores</th><td>{{ sys.cpus }}</td></tr>
+    <tr><th>Max read length</th><td>{{ sys.max_query }} bp</td></tr>
+  </tbody></table>
+  <h2>Limits</h2>
+  <ul>
+    <li>The reference index is built in memory &mdash; practical up to a few hundred Mbp.</li>
+    <li>Reads longer than {{ sys.max_query }} bp are skipped (kernel local-memory limit).</li>
+    <li>Variant calling is a simple pileup model, intended for validation and demonstration.</li>
+  </ul>
+</section>
+{% endblock %}

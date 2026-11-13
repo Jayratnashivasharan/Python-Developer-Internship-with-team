@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Genomic read alignment, accelerated.</h1>
+    <p class="muted">Align FASTQ reads with GPU Smith-Waterman, filter with a BWT/FM-index, and get a VCF report &mdash; all from your browser.</p>
+  </div>
+  <div class="hero-actions">
+    <button id="quick-demo" class="btn primary">&#9889; Run quick demo</button>
+    <a class="btn" href="{{ url_for('new_job') }}">New alignment</a>
+  </div>
+</section>
+<div id="quick-error" class="alert error" hidden></div>
+
+<section class="grid cols-4">
+  <div class="stat"><div class="stat-label">Compute backend</div>
+    <div class="stat-value">{{ sys.default_backend|upper }}</div>
+    <div class="stat-sub">{% if sys.gpus %}{{ sys.gpus|join(', ') }}{% elif sys.cuda_simulator %}CUDA simulator{% else %}No GPU detected &mdash; using CPU (Numba){% endif %}</div></div>
+  <div class="stat"><div class="stat-label">CPU cores</div><div class="stat-value">{{ sys.cpus }}</div>
+    <div class="stat-sub">Max read length {{ sys.max_query }} bp</div></div>
+  <div class="stat"><div class="stat-label">FM-index core</div>
+    <div class="stat-value">{{ {'cython': 'Cython', 'numba': 'Numba', 'python': 'Python'}[sys.seed_engine] }}</div>
+    <div class="stat-sub">{{ {'cython': 'Compiled extension active', 'numba': 'JIT engine (optional: build Cython for max speed)', 'python': 'Slow fallback'}[sys.seed_engine] }}</div></div>
+  <div class="stat"><div class="stat-label">Jobs</div><div class="stat-value">{{ counts.total }}</div>
+    <div class="stat-sub">{{ counts.running }} running &middot; {{ counts.queued }} queued &middot; {{ counts.failed }} failed</div></div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Recent jobs</h2><a href="{{ url_for('jobs_page') }}">View all &rarr;</a></div>
+  {% if recent %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Started</th><th>Duration</th></tr></thead>
+    <tbody>
+    {% for j in recent %}
+      <tr><td><a href="{{ url_for('job_page', jid=j.id) }}">{{ j.name }}</a></td><td>{{ j.kind }}</td>
+        <td><span class="badge {{ j.status }}">{{ j.status }}</span></td>
+        <td>{{ j.started|dt }}</td><td>{{ j.elapsed|dur }}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% else %}
+  <p class="muted">No jobs yet. Click <strong>Run quick demo</strong> to simulate a genome, align reads and call variants in under a minute.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li><strong>Stream</strong> reads from disk with memory-mapped, chunked I/O.</li>
+    <li><strong>Seed</strong> each read against a BWT/FM-index (Cython) &mdash; unrelated reads never reach the GPU.</li>
+    <li><strong>Align</strong> thousands of read/window pairs in parallel (CUDA kernel, or Numba CPU fallback).</li>
+    <li><strong>Trace back</strong> survivors on CPU, verify the GPU score, extract SNPs &amp; indels.</li>
+    <li><strong>Report</strong> a VCF file plus accuracy vs. truth (for simulated data).</li>
+  </ol>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='dashboard.js') }}"></script>{% endblock %}
